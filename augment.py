@@ -52,6 +52,8 @@ def overlay_groups_on_img(groups, base_img, col=None):
 
 
 def outer_contour(img, dilate=0):
+
+    # take img contour
     img = rgb2gray(img)
     img = feature.canny(img)
 
@@ -143,7 +145,7 @@ if __name__ == '__main__':
     src_wc = 'data/raw/spaceship/*.jpg'
     out_dir = 'data/augm'
     h, w = 256, 256
-    dilate = 3  # number of times the contour is dilated
+    dilate = 2  # number of times the contour is dilated
     bgcol = np.array([0, 0, 0])
     train_ratio, val_ratio, test_ratio = .7, .15, .15
     ncrop = 4  # number of horizontal crops
@@ -169,9 +171,11 @@ if __name__ == '__main__':
         img = imread(impath)
 
         # augmentations
-        augms = horizontal_crop(img, ncrop, left_frame_after_crop)
-        augms.extend([np.fliplr(a) for a in augms])
-        augms.extend([np.flipud(a) for a in augms])
+        augms = [img]
+        if subf == 'train':
+            augms = horizontal_crop(img, ncrop, left_frame_after_crop)
+            augms.extend([np.fliplr(a) for a in augms])
+            augms.extend([np.flipud(a) for a in augms])
 
         # save augmented images
         for a, augm_img in enumerate(augms):
