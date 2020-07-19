@@ -147,7 +147,7 @@ if __name__ == '__main__':
     h, w = 256, 256
     dilate = 2  # number of times the contour is dilated
     bgcol = np.array([0, 0, 0])
-    train_ratio, val_ratio, test_ratio = .7, .15, .15
+    train_ratio, val_ratio, test_ratio = .75, .2, .05
     ncrop = 4  # number of horizontal crops
     left_frame_after_crop = 10  # size in pixels
 
