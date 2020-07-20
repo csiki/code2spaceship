@@ -2,4 +2,4 @@ data/
 .idea/
 pytorch-CycleGAN-and-pix2pix/
 __pycache__/
-
+tmp.sh

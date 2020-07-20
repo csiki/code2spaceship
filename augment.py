@@ -9,6 +9,7 @@ from skimage.color import rgb2gray
 from skimage import draw
 from skimage.transform import rescale, resize
 from skimage.morphology import dilation
+from skimage.segmentation import flood, flood_fill
 
 
 def oob(a, x, y):  # out of bounds
@@ -51,7 +52,7 @@ def overlay_groups_on_img(groups, base_img, col=None):
     return col_img
 
 
-def outer_contour(img, dilate=0):
+def outer_contour(img, dilate=0, fill=False):
 
     # take img contour
     img = rgb2gray(img)
@@ -85,9 +86,31 @@ def outer_contour(img, dilate=0):
     line = draw.line(bottom, left[bottom], bottom, right[bottom])
     cont_img[line[0], line[1]] = 1.
 
+    cont_img = cont_img.astype(np.uint8) * 255
+
     # dilate contour
     for _ in range(dilate):
         cont_img = dilation(cont_img)
+
+    # fill inside of outline
+    if fill:
+        filled_cont_img = flood_fill(cont_img, (len(left) // 2, left[len(left) // 2] + 2 + dilate*2), 255)
+        y = 0
+        # try to find inner points of the ship from the left contour
+        while (filled_cont_img[0, 0] == 255 or np.sum(filled_cont_img - cont_img) < img.shape[0] * 255) and y < cont_img.shape[0]:
+            if not oob(cont_img, left[y] + 2 + dilate * 2, y):
+                filled_cont_img = flood_fill(cont_img, (y, left[y] + 2 + dilate * 2), 255)
+            y += 1
+
+        # there is a whole in the outline or nothing has been filled at all
+        if filled_cont_img[0, 0] == 255 or np.sum(filled_cont_img - cont_img) < img.shape[0] * 255:
+            # just draw line between left and right as an approximation
+            lines = [draw.line(y, left[y], y, right[y]) for y in range(cont_img.shape[0]) if right[y] > 0]
+            xs = np.concatenate([xs for xs, _ in lines])
+            ys = np.concatenate([ys for _, ys in lines])
+            cont_img[xs, ys] = 255
+        else:
+            cont_img = filled_cont_img
 
     return cont_img, left, right, top, bottom
 
@@ -122,17 +145,23 @@ def horizontal_crop(img, n, left_frame_size=0):
     return [np.concatenate([left_frame, img[:, left:]], axis=1) for left in range(0, img.shape[1] - stride, stride)]
 
 
-def prep_img(img, h, w, dilate, bgcol=np.array([0, 0, 0])):  # for pytorch-CycleGAN-and-pix2pix
+def prep_img(img, h, w, dilate, bgcol=np.array([0, 0, 0]), fill_cont=False):  # for pytorch-CycleGAN-and-pix2pix
     assert img.dtype == np.uint8
 
     img = color_bg(img, bgcol)
-    cont_img, _, _, _, _ = outer_contour(img, dilate)
+    cont_img, _, _, _, _ = outer_contour(img, dilate, fill_cont)
+    # plt.imshow(np.concatenate([img, np.tile(np.expand_dims(cont_img, -1), (1, 1, 3))], axis=1))
+    # plt.title('what')
+    # plt.show()
 
     img = fit_to_box(img, h, w, bgcol)
-    cont_img = fit_to_box((cont_img * 255).astype(np.uint8), h, w, 0)
+    cont_img = fit_to_box(cont_img, h, w, 0)
     cont_img = np.tile(np.expand_dims(cont_img, -1), (1, 1, 3))
 
     return np.concatenate([img, cont_img], axis=1)
+
+
+# TODO add option to outer_contour to fill in the space within the contour with white
 
 
 if __name__ == '__main__':
@@ -145,11 +174,12 @@ if __name__ == '__main__':
     src_wc = 'data/raw/spaceship/*.jpg'
     out_dir = 'data/augm'
     h, w = 256, 256
-    dilate = 2  # number of times the contour is dilated
+    dilate = 1  # number of times the contour is dilated
     bgcol = np.array([0, 0, 0])
     train_ratio, val_ratio, test_ratio = .75, .15, .1
-    ncrop = 4  # number of horizontal crops
+    ncrop = 3  # number of horizontal crops
     left_frame_after_crop = 10  # size in pixels
+    fill_cont = True
 
     imgpaths = np.random.permutation([f for f in glob(src_wc)])
     ntrain, nval = int(train_ratio * len(imgpaths)), int(val_ratio * len(imgpaths))
@@ -179,7 +209,7 @@ if __name__ == '__main__':
 
         # save augmented images
         for a, augm_img in enumerate(augms):
-            augm_img = prep_img(augm_img, h, w, dilate, bgcol)
+            augm_img = prep_img(augm_img, h, w, dilate, bgcol, fill_cont)
             imsave(f'{out_dir}/{subf}/{i}_{a}.jpg', augm_img)
 
         if i % 100 == 0:

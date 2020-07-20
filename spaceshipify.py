@@ -231,10 +231,7 @@ if __name__ == '__main__':
         prep_contour = np.concatenate([np.zeros_like(contour), contour], axis=1)
         imsave(f'{out_dir}/code_{c}.jpg', prep_contour)
 
-    # python3.6 test.py --dataroot ../data/augm --name code2spaceships --model pix2pix --direction BtoA --preprocess none --batch_size 16 --norm batch --netG unet_256
-
-    # TODO !!! if you still can't test-run it, send an issue to github: https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix
-    #   test it on their fascade dataset, with epoch=1
+    # python3.6 test.py <SAME PARAMS AS FOR train.py>
 
     # TODO
     #   generate images out of these strings, and save them in the right format into the test folder
