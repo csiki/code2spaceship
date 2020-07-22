@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from skimage import draw
 from skimage.morphology import dilation
 from skimage.transform import resize
-from augment import fit_to_box
+from augment import fit_to_box, fill_inside_contour
 from matplotlib.pyplot import imread, imsave, imshow
 
 
@@ -46,13 +46,13 @@ def smooth_contour(cont, window_len, order=2, mode='nearest'):
 
 
 # create whole contour from left and right
-def draw_contour(left, right, char_w, dilate, pad):  # left and right have to be int pixel coordinates
+def draw_contour(left, right, char_w, dilate, pad, fill=True):  # left and right have to be int pixel coordinates
     assert len(left) == len(right)
 
     left *= char_w
     right *= char_w
 
-    cont_img = np.zeros((len(left), int(np.max(right)) + 1, 3))
+    cont_img = np.zeros((len(left), int(np.max(right)) + 1))
     for y in range(1, len(left)):
         if right[y - 1] > 0 and right[y] > 0:
             line = draw.line(y - 1, right[y - 1], y, right[y])
@@ -69,16 +69,23 @@ def draw_contour(left, right, char_w, dilate, pad):  # left and right have to be
     cont_img[line[0], line[1]] = 1.
 
     # add cushion
-    cont_img = np.pad(cont_img, [(pad, pad), (pad, pad), (0, 0)])  # x,y on both directions
+    cont_img = np.pad(cont_img, [(pad, pad), (pad, pad)])  # x,y on both directions
+    cont_img = cont_img.astype(np.uint8) * 255
+    left += pad
+    right += pad
+    left, right = np.pad(left, (pad, pad)), np.pad(right, (pad, pad))
 
     # dilate contour
     for _ in range(dilate):
         cont_img = dilation(cont_img)
 
-    return cont_img
+    if fill:
+        cont_img = fill_inside_contour(cont_img, left, right, dilate, all_components=True)
+
+    return np.tile(np.expand_dims(cont_img, -1), (1, 1, 3))
 
 
-def code2contour(code, box_size=256, order=3, dilate=1, pad=5):
+def code2contour(code, box_size=256, order=3, dilate=1, pad=5, fill_cont=True):
 
     left_cont, right_cont = code_outline(code)
     line_h = box_size // len(right_cont)
@@ -97,7 +104,7 @@ def code2contour(code, box_size=256, order=3, dilate=1, pad=5):
     # left cannot be higher than right, it should strictly be smaller by a little at least
     left_cont = np.clip(np.stack([left_cont, right_cont - box_size / 15], axis=-1).min(axis=-1), 0, np.inf)
 
-    contour = draw_contour(left_cont.astype(int), right_cont.astype(int), char_w, dilate, pad)
+    contour = draw_contour(left_cont.astype(int), right_cont.astype(int), char_w, dilate, pad, fill_cont)
     # orig_shape = contour.shape  # keep for later so the generated ship can be deformed back, if needed at all
 
     # contour = (resize(contour, (box_size, box_size)) * 255).astype(np.uint8)
@@ -215,16 +222,18 @@ def code2contour(code, box_size=256, order=3, dilate=1, pad=5):
 """
 
 
+CODE5 = """
 if __name__ == '__main__':
 
     out_dir = 'data/augm/test'
     box_size = 256
-    order = 3
+    order = 1
     dilate = 1
-    pad = 5
+    pad = 10
+    fill_cont = True
 
     for c, code in enumerate([CODE1, CODE2, CODE3, CODE4]):
-        contour = code2contour(code, box_size, order, dilate, pad)
+        contour = code2contour(code, box_size, order, dilate, pad, fill_cont)
         # plt.imshow(contour)
         # plt.show()
 
@@ -232,8 +241,24 @@ if __name__ == '__main__':
         imsave(f'{out_dir}/code_{c}.jpg', prep_contour)
 
     # python3.6 test.py <SAME PARAMS AS FOR train.py>
+"""
 
-    # TODO
-    #   generate images out of these strings, and save them in the right format into the test folder
-    #   then run the test script
-    #   !!! shrink the x of the image to mimic the line/character length ratio
+
+if __name__ == '__main__':
+
+    out_dir = 'data/augm/test'
+    box_size = 256
+    order = 1
+    dilate = 1
+    pad = 10
+    fill_cont = True
+
+    for c, code in enumerate([CODE1, CODE2, CODE3, CODE4, CODE5]):
+        contour = code2contour(code, box_size, order, dilate, pad, fill_cont)
+        # plt.imshow(contour)
+        # plt.show()
+
+        prep_contour = np.concatenate([np.zeros_like(contour), contour], axis=1)
+        imsave(f'{out_dir}/code_{c}.jpg', prep_contour)
+
+    # python3.6 test.py <SAME PARAMS AS FOR train.py>

@@ -52,6 +52,32 @@ def overlay_groups_on_img(groups, base_img, col=None):
     return col_img
 
 
+def fill_inside_contour(cont_img, left, right, dilate, all_components=False):  # foolproof
+    no_good_fill = lambda fill, cont: (fill[0, 0] == 255 or np.sum(fill - cont) < cont.shape[0] * 255)
+    filled_cont_img = flood_fill(cont_img, (len(left) // 2, left[len(left) // 2] + 2 + dilate * 2), 255)
+
+    # try to find inner points of the ship from the left contour
+    y = 0
+    while (all_components or no_good_fill(filled_cont_img, cont_img)) and y < cont_img.shape[0]:
+        if not oob(cont_img, left[y] + 2 + dilate * 2, y):
+            filled_cont_img = flood_fill(cont_img, (y, left[y] + 2 + dilate * 2), 255)
+            if all_components and not no_good_fill(filled_cont_img, cont_img):
+                cont_img = filled_cont_img
+        y += 1
+
+    # there is a whole in the outline or nothing has been filled at all
+    if filled_cont_img[0, 0] == 255 or np.sum(filled_cont_img - cont_img) < cont_img.shape[0] * 255:
+        # just draw line between left and right as an approximation
+        lines = [draw.line(y, left[y], y, right[y]) for y in range(cont_img.shape[0]) if right[y] > 0]
+        xs = np.concatenate([xs for xs, _ in lines])
+        ys = np.concatenate([ys for _, ys in lines])
+        cont_img[xs, ys] = 255
+    else:
+        cont_img = filled_cont_img
+
+    return cont_img
+
+
 def outer_contour(img, dilate=0, fill=False):
 
     # take img contour
@@ -94,23 +120,7 @@ def outer_contour(img, dilate=0, fill=False):
 
     # fill inside of outline
     if fill:
-        filled_cont_img = flood_fill(cont_img, (len(left) // 2, left[len(left) // 2] + 2 + dilate*2), 255)
-        y = 0
-        # try to find inner points of the ship from the left contour
-        while (filled_cont_img[0, 0] == 255 or np.sum(filled_cont_img - cont_img) < img.shape[0] * 255) and y < cont_img.shape[0]:
-            if not oob(cont_img, left[y] + 2 + dilate * 2, y):
-                filled_cont_img = flood_fill(cont_img, (y, left[y] + 2 + dilate * 2), 255)
-            y += 1
-
-        # there is a whole in the outline or nothing has been filled at all
-        if filled_cont_img[0, 0] == 255 or np.sum(filled_cont_img - cont_img) < img.shape[0] * 255:
-            # just draw line between left and right as an approximation
-            lines = [draw.line(y, left[y], y, right[y]) for y in range(cont_img.shape[0]) if right[y] > 0]
-            xs = np.concatenate([xs for xs, _ in lines])
-            ys = np.concatenate([ys for _, ys in lines])
-            cont_img[xs, ys] = 255
-        else:
-            cont_img = filled_cont_img
+        cont_img = fill_inside_contour(cont_img, left, right, dilate, fill)  # if filled, do all components
 
     return cont_img, left, right, top, bottom
 
@@ -145,7 +155,7 @@ def horizontal_crop(img, n, left_frame_size=0):
     return [np.concatenate([left_frame, img[:, left:]], axis=1) for left in range(0, img.shape[1] - stride, stride)]
 
 
-def prep_img(img, h, w, dilate, bgcol=np.array([0, 0, 0]), fill_cont=False):  # for pytorch-CycleGAN-and-pix2pix
+def prep_img(img, h, w, dilate, bgcol=np.array([0, 0, 0]), fill_cont=True, bw=False):  # for pytorch-CycleGAN-and-pix2pix
     assert img.dtype == np.uint8
 
     img = color_bg(img, bgcol)
@@ -158,34 +168,40 @@ def prep_img(img, h, w, dilate, bgcol=np.array([0, 0, 0]), fill_cont=False):  # 
     cont_img = fit_to_box(cont_img, h, w, 0)
     cont_img = np.tile(np.expand_dims(cont_img, -1), (1, 1, 3))
 
+    img = np.tile(np.expand_dims(rgb2gray(img), axis=-1), (1, 1, 3)) if bw else img  # TODO create only 2D, remove channel (the expand part)
+
     return np.concatenate([img, cont_img], axis=1)
 
 
-# TODO add option to outer_contour to fill in the space within the contour with white
+# TODO try smaller averaging windows for the code2contour !
+# TODO try without any cropping
+# TODO try black and white images
+# TODO new spaceship outer contour algo: just flood the 4 corners, than take the inverse
+#   COMBINE it with the current solution: take the intersection of the "flood-inverse" and the "left-right" contours
+
+# TODO rm horizontal flip - so the network can learn that guns point to the right
 
 
 if __name__ == '__main__':
-
-    # img = imread('data/dl/startrek/white-bg-only/5.jpg')
-    # ready = prep_img(img, 256, 256, 3)
-    # imshow(ready)
-    # plt.show()
 
     src_wc = 'data/raw/spaceship/*.jpg'
     out_dir = 'data/augm'
     h, w = 256, 256
     dilate = 1  # number of times the contour is dilated
     bgcol = np.array([0, 0, 0])
-    train_ratio, val_ratio, test_ratio = .75, .15, .1
+    train_ratio, val_ratio, test_ratio = .75, .2, .05
     ncrop = 3  # number of horizontal crops
     left_frame_after_crop = 10  # size in pixels
     fill_cont = True
+    bw = True
 
     imgpaths = np.random.permutation([f for f in glob(src_wc)])
     ntrain, nval = int(train_ratio * len(imgpaths)), int(val_ratio * len(imgpaths))
     ntest = len(imgpaths) - ntrain - nval
 
     # clear out_dir
+    if os.path.isdir(f'{out_dir}/train'):
+        raise RuntimeError(f'{out_dir}/train folder exists! Remove it first.')
     shutil.rmtree(out_dir, ignore_errors=True)
     for d in ['train', 'val', 'test']:
         os.makedirs(f'{out_dir}/{d}')
@@ -200,7 +216,7 @@ if __name__ == '__main__':
 
         img = imread(impath)
 
-        # augmentations
+        # augmentations (training set only)
         augms = [img]
         if subf == 'train':
             augms = horizontal_crop(img, ncrop, left_frame_after_crop)
@@ -209,7 +225,7 @@ if __name__ == '__main__':
 
         # save augmented images
         for a, augm_img in enumerate(augms):
-            augm_img = prep_img(augm_img, h, w, dilate, bgcol, fill_cont)
+            augm_img = prep_img(augm_img, h, w, dilate, bgcol, fill_cont, bw)
             imsave(f'{out_dir}/{subf}/{i}_{a}.jpg', augm_img)
 
         if i % 100 == 0:
