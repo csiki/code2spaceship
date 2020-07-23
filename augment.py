@@ -125,6 +125,21 @@ def outer_contour(img, dilate=0, fill=False):
     return cont_img, left, right, top, bottom
 
 
+def flood_outer_contour(img):
+
+    # use all three channels, flood them separately, AND the results; repeat this for all 4 corners and OR them
+    img = img.astype(int)  # so when flooding the value can be set to something unique
+    corners = [(0, 0), (img.shape[0] - 1, img.shape[1] - 1), (0, img.shape[1] - 1), (img.shape[0] - 1, 0)]
+
+    floods = [np.bitwise_and.reduce(
+        np.bitwise_and.reduce([flood_fill(img, corner + (chan,), -1) == -1 for chan in range(3)]), axis=-1)
+        for corner in corners]
+    cont_img = np.invert(np.bitwise_or.reduce(floods)).astype(np.uint8) * 255
+
+    # TODO return left, right, top, bottom as in outer_contour
+    return cont_img, None, None, None, None
+
+
 def color_bg(img, col):
     img = img.copy()
     corners = {(0, 0), (img.shape[0] - 1, img.shape[1] - 1), (0, img.shape[1] - 1), (img.shape[0] - 1, 0)}
@@ -152,14 +167,15 @@ def fit_to_box(img, h, w, fill_col):  # img has to be uint8
 def horizontal_crop(img, n, left_frame_size=0):
     stride = img.shape[1] // n
     left_frame = np.ones((img.shape[0], left_frame_size, 3), dtype=img.dtype) * img[0, 0]
-    return [np.concatenate([left_frame, img[:, left:]], axis=1) for left in range(0, img.shape[1] - stride, stride)]
+    return [np.concatenate([left_frame, img[:, left:]], axis=1) for left in range(0, img.shape[1] - stride + 1, stride)]
 
 
 def prep_img(img, h, w, dilate, bgcol=np.array([0, 0, 0]), fill_cont=True, bw=False):  # for pytorch-CycleGAN-and-pix2pix
     assert img.dtype == np.uint8
 
+    cont_img, _, _, _, _ = flood_outer_contour(img)
+    # cont_img, _, _, _, _ = outer_contour(img, dilate, fill_cont)
     img = color_bg(img, bgcol)
-    cont_img, _, _, _, _ = outer_contour(img, dilate, fill_cont)
     # plt.imshow(np.concatenate([img, np.tile(np.expand_dims(cont_img, -1), (1, 1, 3))], axis=1))
     # plt.title('what')
     # plt.show()
@@ -168,40 +184,38 @@ def prep_img(img, h, w, dilate, bgcol=np.array([0, 0, 0]), fill_cont=True, bw=Fa
     cont_img = fit_to_box(cont_img, h, w, 0)
     cont_img = np.tile(np.expand_dims(cont_img, -1), (1, 1, 3))
 
-    img = np.tile(np.expand_dims(rgb2gray(img), axis=-1), (1, 1, 3)) if bw else img  # TODO create only 2D, remove channel (the expand part)
+    img = np.tile(np.expand_dims(rgb2gray(img), axis=-1), (1, 1, 3)) if bw else img
 
     return np.concatenate([img, cont_img], axis=1)
 
 
-# TODO try smaller averaging windows for the code2contour !
+# TODO try spaceshipify where left=0 everywhere (flat left contour)
+#   try separately to pair it with an augm where spaceship contours are also have left=0 everywhere
 # TODO try without any cropping
-# TODO try black and white images
-# TODO new spaceship outer contour algo: just flood the 4 corners, than take the inverse
-#   COMBINE it with the current solution: take the intersection of the "flood-inverse" and the "left-right" contours
-
-# TODO rm horizontal flip - so the network can learn that guns point to the right
+# TODO clean dataset: rm non-starships, rm starships that don't look to the right
+# TODO manually add more spaceships
 
 
 if __name__ == '__main__':
 
     src_wc = 'data/raw/spaceship/*.jpg'
     out_dir = 'data/augm'
-    h, w = 256, 256
+    h, w = 512, 512
     dilate = 1  # number of times the contour is dilated
     bgcol = np.array([0, 0, 0])
     train_ratio, val_ratio, test_ratio = .75, .2, .05
     ncrop = 3  # number of horizontal crops
     left_frame_after_crop = 10  # size in pixels
     fill_cont = True
-    bw = True
+    bw = False
 
     imgpaths = np.random.permutation([f for f in glob(src_wc)])
     ntrain, nval = int(train_ratio * len(imgpaths)), int(val_ratio * len(imgpaths))
     ntest = len(imgpaths) - ntrain - nval
 
     # clear out_dir
-    if os.path.isdir(f'{out_dir}/train'):
-        raise RuntimeError(f'{out_dir}/train folder exists! Remove it first.')
+    # if os.path.isdir(f'{out_dir}/train'):
+    #     raise RuntimeError(f'{out_dir}/train folder exists! Remove it first!')
     shutil.rmtree(out_dir, ignore_errors=True)
     for d in ['train', 'val', 'test']:
         os.makedirs(f'{out_dir}/{d}')
@@ -220,7 +234,7 @@ if __name__ == '__main__':
         augms = [img]
         if subf == 'train':
             augms = horizontal_crop(img, ncrop, left_frame_after_crop)
-            augms.extend([np.fliplr(a) for a in augms])
+            # augms.extend([np.fliplr(a) for a in augms])  # removed so e.g. gun placement is more consistent
             augms.extend([np.flipud(a) for a in augms])
 
         # save augmented images

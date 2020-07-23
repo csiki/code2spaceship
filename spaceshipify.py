@@ -90,13 +90,13 @@ def code2contour(code, box_size=256, order=3, dilate=1, pad=5, fill_cont=True):
     left_cont, right_cont = code_outline(code)
     line_h = box_size // len(right_cont)
     char_w = line_h // 3
-    window_len = int(line_h * 3)
+    window_len = max(3, int(line_h * .5))
 
     left_cont = dilate_array(left_cont, line_h)
     right_cont = dilate_array(right_cont, line_h)
 
-    left_cont = smooth_contour(left_cont, window_len // 2, order)
-    right_cont = smooth_contour(right_cont, window_len // 2, order)
+    left_cont = smooth_contour(left_cont, window_len, order)
+    right_cont = smooth_contour(right_cont, window_len, order)
 
     # pull closer to zero if the left is close to 0 on avg or if it has a high variance
     push_left_to_zero = np.mean(left_cont) / np.max(left_cont) / np.std(left_cont) * 5
