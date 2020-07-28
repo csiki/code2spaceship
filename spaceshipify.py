@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 from scipy import signal
 import matplotlib.pyplot as plt
@@ -85,7 +86,7 @@ def draw_contour(left, right, char_w, dilate, pad, fill=True):  # left and right
     return np.tile(np.expand_dims(cont_img, -1), (1, 1, 3))
 
 
-def code2contour(code, box_size=256, order=3, dilate=1, pad=5, fill_cont=True):
+def code2contour(code, box_size=256, order=3, dilate=1, pad=5, fill_cont=True, set_left=None):
 
     left_cont, right_cont = code_outline(code)
     line_h = box_size // len(right_cont)
@@ -98,9 +99,13 @@ def code2contour(code, box_size=256, order=3, dilate=1, pad=5, fill_cont=True):
     left_cont = smooth_contour(left_cont, window_len, order)
     right_cont = smooth_contour(right_cont, window_len, order)
 
-    # pull closer to zero if the left is close to 0 on avg or if it has a high variance
-    push_left_to_zero = np.mean(left_cont) / np.max(left_cont) / np.std(left_cont) * 5
-    left_cont *= push_left_to_zero
+    if set_left is not None:
+        left_cont = np.full_like(left_cont, set_left)
+    else:
+        # pull closer to zero if the left is close to 0 on avg or if it has a high variance
+        push_left_to_zero = np.mean(left_cont) / np.max(left_cont) / np.std(left_cont) * 5
+        left_cont *= push_left_to_zero
+
     # left cannot be higher than right, it should strictly be smaller by a little at least
     left_cont = np.clip(np.stack([left_cont, right_cont - box_size / 15], axis=-1).min(axis=-1), 0, np.inf)
 
@@ -246,15 +251,17 @@ if __name__ == '__main__':
 
 if __name__ == '__main__':
 
-    out_dir = 'data/augm/test'
+    root_dir = sys.argv[1] if len(sys.argv) > 1 else 'data/augm'
+    out_dir = f'{root_dir}/test'
     box_size = 256
     order = 1
     dilate = 1
     pad = 10
     fill_cont = True
+    set_left = 1  # or None  # TODO
 
     for c, code in enumerate([CODE1, CODE2, CODE3, CODE4, CODE5]):
-        contour = code2contour(code, box_size, order, dilate, pad, fill_cont)
+        contour = code2contour(code, box_size, order, dilate, pad, fill_cont, set_left)
         # plt.imshow(contour)
         # plt.show()
 

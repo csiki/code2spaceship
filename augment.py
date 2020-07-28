@@ -199,12 +199,12 @@ def prep_img(img, h, w, dilate, bgcol=np.array([0, 0, 0]), fill_cont=True, bw=Fa
 if __name__ == '__main__':
 
     src_wc = 'data/raw/spaceship/*.jpg'
-    out_dir = 'data/augm'
-    h, w = 512, 512
+    out_dir = sys.argv[1] if len(sys.argv) > 1 else 'data/augm'
+    h, w = (int(sys.argv[2]), int(sys.argv[2])) if len(sys.argv) > 2 else (256, 256)
     dilate = 1  # number of times the contour is dilated
     bgcol = np.array([0, 0, 0])
-    train_ratio, val_ratio, test_ratio = .75, .2, .05
-    ncrop = 3  # number of horizontal crops
+    train_ratio, val_ratio, test_ratio = .95, 0., .05  # valid is not even used during training...
+    ncrop = 1  # number of horizontal crops; set 1 to have only the original img  # TODO
     left_frame_after_crop = 10  # size in pixels
     fill_cont = True
     bw = False
