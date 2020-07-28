@@ -2,11 +2,21 @@ startrek
     database: https://www.ex-astris-scientia.org/starship_database.htm
     fan-made: https://www.ex-astris-scientia.org/my_ships.htm
     some shuttles: http://www.treknology.org/shuttles1.htm
-pinterest
 warhammer40000
 mass effect
 eve online
 destiny 2
 halo
+
+pinterest
+
 devianart
-    
+    https://www.deviantart.com/dirkloechel/art/Star-Wars-Warhammer-40000-Si-148066263
+    https://www.deviantart.com/euderion/art/Turian-Shuttle-Overview-Card-768171484
+    https://www.deviantart.com/euderion/art/Alliance-Trishul-class-Interceptor-Overview-747695355
+    https://www.deviantart.com/euderion/art/Denali-class-Overview-Card-741451840
+    http://gatecast.co.uk/wp-content/uploads/2012/07/Stargate-Ships-B.jpg
+    https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/ffc8c5ef-1058-4f07-b62c-e396612d3028/d6lfgdf-09dc7543-d164-4ded-85b8-55f261409db3.jpg?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwic3ViIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsImF1ZCI6WyJ1cm46c2VydmljZTpmaWxlLmRvd25sb2FkIl0sIm9iaiI6W1t7InBhdGgiOiIvZi9mZmM4YzVlZi0xMDU4LTRmMDctYjYyYy1lMzk2NjEyZDMwMjgvZDZsZmdkZi0wOWRjNzU0My1kMTY0LTRkZWQtODViOC01NWYyNjE0MDlkYjMuanBnIn1dXX0.8I2ZqGqmadOKb5OxynW0wAouKnkcpaKdd0zsPvOlgYs
+    https://i.redd.it/dxmz47naamv41.jpg
+    https://imgur.com/SavpAcf
+    https://i.imgur.com/DdVxybE.jpg
