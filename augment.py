@@ -205,7 +205,7 @@ if __name__ == '__main__':
     bgcol = np.array([0, 0, 0])
     train_ratio, val_ratio, test_ratio = .95, 0., .05  # valid is not even used during training...
     ncrop = 1  # number of horizontal crops; set 1 to have only the original img  # TODO
-    left_frame_after_crop = 10  # size in pixels
+    left_frame_after_crop = 10  # width in pixels
     fill_cont = True
     bw = False
 
