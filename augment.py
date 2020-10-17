@@ -198,7 +198,7 @@ def prep_img(img, h, w, dilate, bgcol=np.array([0, 0, 0]), fill_cont=True, bw=Fa
 
 if __name__ == '__main__':
 
-    src_wc = 'data/raw/spaceship/*.jpg'
+    src_wcs = ['data/raw/spaceship/*/*.jpg', 'data/raw/spaceship/*/*.png']
     out_dir = sys.argv[1] if len(sys.argv) > 1 else 'data/augm'
     h, w = (int(sys.argv[2]), int(sys.argv[2])) if len(sys.argv) > 2 else (256, 256)
     dilate = 1  # number of times the contour is dilated
@@ -209,9 +209,11 @@ if __name__ == '__main__':
     fill_cont = True
     bw = False
 
-    imgpaths = np.random.permutation([f for f in glob(src_wc)])
+    imgpaths = [f for wc in src_wcs for f in glob(wc)]
+    imgpaths = np.random.permutation(imgpaths)
     ntrain, nval = int(train_ratio * len(imgpaths)), int(val_ratio * len(imgpaths))
     ntest = len(imgpaths) - ntrain - nval
+    print(f'ntrain: {ntrain}, nvalid: {nval}, ntest: {ntest}')
 
     # clear out_dir
     # if os.path.isdir(f'{out_dir}/train'):
@@ -229,6 +231,8 @@ if __name__ == '__main__':
             subf = 'test'
 
         img = imread(impath)
+        img = (img * 255).astype(np.uint8) if img.dtype == np.float32 else img  # cast to uint
+        img = img[..., :3]  # remove alpha channel
 
         # augmentations (training set only)
         augms = [img]
