@@ -7,6 +7,7 @@ from skimage.morphology import dilation
 from skimage.transform import resize
 from augment import fit_to_box, fill_inside_contour
 from matplotlib.pyplot import imread, imsave, imshow
+from stable_diff import StableSpaceship
 
 
 def code_outline(code, tolerate_0s=False):
@@ -293,12 +294,20 @@ if __name__ == '__main__':
     fill_cont = True
     set_left = 1  # or None  # TODO
 
+    sss = StableSpaceship()
+    steps = 200
+    prompt = 'sideview of a spaceship from star wars with silver and blue colors. ' \
+             'high definition aesthetic 3d model'
+
     for c, code in enumerate([CODE1, CODE2, CODE3, CODE4, CODE5, CODE6]):
         contour = code2contour(code, box_size, order, dilate, pad, fill_cont, set_left)
-        # plt.imshow(contour)
-        # plt.show()
 
-        prep_contour = np.concatenate([np.zeros_like(contour), contour], axis=1)
-        imsave(f'{out_dir}/code_{c}.jpg', prep_contour)
+        ship = sss.run(contour, prompt=prompt, steps=steps)
+
+        plt.imshow(np.concatenate([resize(contour, ship.shape), ship], axis=1))
+        plt.show()
+
+        # prep_contour = np.concatenate([np.zeros_like(contour), contour], axis=1)
+        # imsave(f'{out_dir}/code_{c}.jpg', prep_contour)
 
     # python3.6 test.py <SAME PARAMS AS FOR train.py>

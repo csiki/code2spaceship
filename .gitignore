@@ -3,3 +3,4 @@ data/
 pytorch-CycleGAN-and-pix2pix/
 __pycache__/
 tmp.sh
+stable-diffusion-v1-4/
