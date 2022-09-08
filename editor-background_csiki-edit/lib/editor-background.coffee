@@ -5,6 +5,7 @@ animation = require './animation'
 yt = require './youtube'
 popup = require './popup'
 configWindow = require './config'
+exec = require 'child_process'
 path = require 'path'
 #elementResizeEvent = require 'element-resize-event'
 
@@ -204,9 +205,6 @@ module.exports = EditorBackground =
           try 8 or 4 for 3dbox or 20 for wallpaper"
 
 
-
-
-
   packagesLoaded:false
   initialized:false
   elements: {}
@@ -217,8 +215,18 @@ module.exports = EditorBackground =
   editorStyles:[]
   editor:{}
 
-  bgState:1
 
+  # csiki1
+  pypath: "/home/vik/code2spaceship/venv/bin/python"
+  shipifyPath: "/home/vik/code2spaceship/spaceshipify.py"
+  spaceshipImgPath: "/home/vik/code2spaceship/out/atom_spaceship.png"
+  diffusionSteps: 200  # TODO
+  spaceshipSize: 512
+  spaceshipStyle: "sideview of a spaceship from star wars with silver and blue metallic colors. high definition aesthetic 3d model"
+
+  armadaReady: true
+  armadaLineH: 0
+  armadaCharW: 0
 
   activate: (state) ->
     @subs = new CompositeDisposable
@@ -819,17 +827,14 @@ module.exports = EditorBackground =
 
   watchEditor:(editor)->
     elem = editor.getElement()
-    @subs.add elem.onDidChangeScrollTop (scroll)=>
-      
-      # csiki3
-      # TODO bgstate change can be removed
-      if @bgState == 1
-        @bgState = 2
-      else
-        @bgState = 1
 
-      # THIS IS NEEDED
+
+    # csiki3
+    @subs.add elem.onDidChangeScrollTop (scroll)=>
       @applyBackground.apply @
+
+    @subs.add editor.onDidSave (save)=>
+      @shipifyCode.apply @
 
 
     @subs.add elem.onDidChangeScrollLeft (scroll)=>
@@ -1067,6 +1072,7 @@ module.exports = EditorBackground =
             applyBlur = true
           else
             setTimeout (=> @blurImage.apply @),1000
+
       if applyBlur and conf.image.url
         imageData = blur.stackBlurImage @elements.image, conf.image.blurRadius, false
         base64Data = imageData.replace(/^data:image\/png;base64,/, "")
@@ -1088,6 +1094,50 @@ module.exports = EditorBackground =
         inline @elements.bg,"opacity:#{opacity};"
         inline @elements.bg,"background-position:#{position};"
         inline @elements.bg,"background-repeat:#{repeat};"
+
+  # csiki6
+  shipifyCode: ->
+
+    # get code
+    activeEditor = atom.workspace.getActiveTextEditor()
+    editor = atom.views.getView(activeEditor)
+    codePath = activeEditor.getPath()
+
+    # run shipify
+    # TODO use: #{@pypath} #{@shipifyPath} \"#{codePath}\"
+    command = "#{@pypath} #{@shipifyPath}"
+    command += " --steps #{@diffusionSteps}"
+    command += " --size #{@spaceshipSize}"
+    command += " --prompt \"#{@spaceshipStyle}\""
+    command += " \"#{codePath}\" \"#{@spaceshipImgPath}\""
+    activeEditor.insertText(command + '\n')
+
+    # TODO instead of running it over and over again, have a running python bg process that takes code paths and gens img
+    # TODO instead of running this when saved, use key bindings:
+    #   https://flight-manual.atom.io/api/v1.57.0/KeymapManager/#instance-add
+
+    # change background to blank
+    @armadaReady = false
+    @applyBackground.apply @
+
+    applyBackgroundLocal = @applyBackground
+    setArmadaReadyLocal = @setArmadaReady
+
+    exec.exec command, (error, stdout, stderr) ->
+      activeEditor.insertText('yosag end: ' + stdout)
+      ret = JSON.parse(stdout)
+      if ret['liftoff'] == 'success'
+        @armadaLineH = ret['line_h']
+        @armadaCharW = ret['char_w']
+        @armadaReady = true  # TODO !!!!!!!!!!!!!!!!!!!! these don't work !!!
+        applyBackgroundLocal.apply @
+        setArmadaReadyLocal.apply @
+        activeEditor.insertText('cooooooooooooooooooool')
+      else
+        activeEditor.insertText('error: ' + ret['whynah'])
+
+  setArmadaReady: ->
+    @armadaReady = true
 
   applyBackground: ->
     if @packagesLoaded
@@ -1140,24 +1190,37 @@ module.exports = EditorBackground =
         inline @elements.bg, 'background-size:'+conf.image.manualBackgroundSize+
         ' !important;'
 
-      if conf.image.style
+      activeEditor = atom.workspace.getActiveTextEditor()
+      if activeEditor?
 
-        activeEditor = atom.workspace.getActiveTextEditor()
+        # csiki5
+        # TODO compute background position according to screen/scroll position
 
-        activeEditor.insertText(@elements.plane.style.cssText + ' ---\n')
-        activeEditor.insertText(conf.image.style + ' ///\n')
+        # TODO get current line height and character width
+        #   search for lineHeight here:
+        #   https://flight-manual.atom.io/using-atom/sections/basic-customization/
 
+        lineH = 4  #21  # TODO get
+        charW = 1  #9  # TODO get
 
-        # csiki5 THIS DID IT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # TODO use https://github.com/atom-community/atom-script to run python script ...
-        # TODO just create an onsave that runs the shipify python script and saves the img
+        pos_x = 20
+        pos_y = 8
+        size_x = 400  # todo px
+        size_y = 640  # todo px
 
-        # TODO and HERE only change background position according to line height and screen pos
-
-        csstoadd = "background: black url('c://Users/chick/.atom/packages/editor-background/images/tmpbg#{@bgState}.png') no-repeat fixed; padding: 25px; background-origin: content-box, padding-box; background-position: 20px 8px;"
+        # create css
+        activeEditor.insertText('arm:' + @armadaReady + ';')
+        if @armadaReady
+          csstoadd = "background: black url('#{@spaceshipImgPath}') no-repeat fixed;"
+          csstoadd += "background-origin: content-box, padding-box;"
+          csstoadd += "background-position: #{pos_x}px #{pos_y}px;"
+          csstoadd += "background-size: #{size_x}px #{size_y}px;"
+          csstoadd += "opacity: 0.5;"
+        else
+          csstoadd = "background-color: black; background-image: none;"
+        # TODO bg opacity
 
         @elements.plane.style.cssText+=csstoadd
-
 
       @blurImage()
 
@@ -1170,10 +1233,6 @@ module.exports = EditorBackground =
         inline @elements.left,'background:transparent !important;'
         inline @elements.resizer,'background:transparent !important;'
         inline @elements.leftPanel,'background:transparent !important;'
-
-
-
-
 
 
   # show config window
