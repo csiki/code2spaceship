@@ -222,7 +222,7 @@ module.exports = EditorBackground =
   spaceshipImgPath: "/home/vik/code2spaceship/out/atom_spaceship.png"
   diffusionSteps: 200  # TODO
   spaceshipSize: 512
-  spaceshipStyle: "sideview of a spaceship from star wars with silver and blue metallic colors. high definition aesthetic 3d model"
+  spaceshipStyle: "sideview of the front half of a huge spaceship from star wars with silver and blue metallic colors. high definition aesthetic 3d model"
 
   armadaReady: true
   armadaLineH: 0
@@ -1122,17 +1122,19 @@ module.exports = EditorBackground =
 
     applyBackgroundLocal = @applyBackground
     setArmadaReadyLocal = @setArmadaReady
+    localThis = this
 
     exec.exec command, (error, stdout, stderr) ->
-      activeEditor.insertText('yosag end: ' + stdout)
+      # activeEditor.insertText('yosag end: ' + stdout)
       ret = JSON.parse(stdout)
       if ret['liftoff'] == 'success'
         @armadaLineH = ret['line_h']
         @armadaCharW = ret['char_w']
-        @armadaReady = true  # TODO !!!!!!!!!!!!!!!!!!!! these don't work !!!
-        applyBackgroundLocal.apply @
-        setArmadaReadyLocal.apply @
-        activeEditor.insertText('cooooooooooooooooooool')
+        @armadaReady = true
+        setArmadaReadyLocal.apply localThis
+        applyBackgroundLocal.apply localThis
+        setArmadaReadyLocal()
+        #activeEditor.insertText('cooooooooooooooooooool')
       else
         activeEditor.insertText('error: ' + ret['whynah'])
 
@@ -1209,7 +1211,7 @@ module.exports = EditorBackground =
         size_y = 640  # todo px
 
         # create css
-        activeEditor.insertText('arm:' + @armadaReady + ';')
+#        activeEditor.insertText('arm:' + @armadaReady + ';')
         if @armadaReady
           csstoadd = "background: black url('#{@spaceshipImgPath}') no-repeat fixed;"
           csstoadd += "background-origin: content-box, padding-box;"

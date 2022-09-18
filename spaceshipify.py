@@ -337,7 +337,7 @@ if __name__ == '__main__':
     parser.add_argument('-st', '--steps', help='number of refinement steps to take', type=int, default=200)
     parser.add_argument('-si', '--size', help='size of the output image', type=int, default=512)
     parser.add_argument('-p', '--prompt', help='style description of spaceship', default=
-                        'high definition aesthetic sideview of a single spaceship from star wars with blue colors in empty space')
+                        'high definition aesthetic sideview of the front half of a single spaceship from star wars with blue colors')
 
     args = parser.parse_args()
 
