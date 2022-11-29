@@ -328,6 +328,12 @@ def example_run():
         plt.imsave('spaceship_example.png', ship)
 
 
+# TODO put it on amazon sagemaker
+#   https://huggingface.co/blog/gptj-sagemaker
+#   https://github.com/philschmid/amazon-sagemaker-gpt-j-sample/blob/main/convert_gptj.py
+#   https://www.youtube.com/watch?v=ok3hetb42gU
+
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Spaceshipifies Python scripts')
