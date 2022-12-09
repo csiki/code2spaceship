@@ -23,7 +23,7 @@ class StableSpaceship:
         #  new inpainting:
         #   'stabilityai/stable-diffusion-2-inpainting'
         #   'runwayml/stable-diffusion-inpainting'
-        self.model_id = 'runwayml/stable-diffusion-v1-5'
+        self.model_id = 'stabilityai/stable-diffusion-2-base'
         self.device = 'cuda'
 
         # StableDiffusionInpaintPipeline
@@ -32,8 +32,8 @@ class StableSpaceship:
         # self.pipe.scheduler = DPMSolverMultistepScheduler.from_config(self.pipe.scheduler.config)
         self.pipe = self.pipe.to(self.device)
 
-    def example_run(self, prompt='sideview of a 3D metallic combat spaceship from star wars in space with r2d2 on top | unreal engine',
-                    negative_prompt='ugly cartoonish', mask_path='spaceship_mask.png', num_inference_steps=50, gen_space_bg=False):
+    def example_run(self, prompt='sideview of a 3D metallic combat spaceship from star trek in space | deviantart',
+                    negative_prompt='ugly cartoonish simple', mask_path='spaceship_mask.png', num_inference_steps=50, gen_space_bg=False):
         torch.random.manual_seed(42)
         np.random.seed(42)
 
